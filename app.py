@@ -36,6 +36,7 @@ vin_typ = st.sidebar.slider("Vin typique (V) pour analyse", min_value=float(vin_
 
 vout = st.sidebar.number_input("Vout (V)", min_value=0.1, value=5.0, step=0.1, format="%.2f")
 iout = st.sidebar.number_input("Courant de sortie Iout (A)", min_value=0.01, value=2.0, step=0.01, format="%.2f")
+kr = st.sidebar.slider("Ratio Ondulation Courant (Kr)", min_value=0.1, max_value=1.0, value=0.4, step=0.05, format="%.2f")
 
 st.sidebar.header("Caractéristiques Contrôleur")
 fsw_khz = st.sidebar.number_input("Fréquence découpage Fsw (kHz)", min_value=10, value=500, step=10, format="%d")
@@ -52,17 +53,34 @@ if vout >= vin_min:
 
 # --- SECTION 1 : DIMENSIONNEMENT THÉORIQUE ---
 st.header("Dimensionnement Théorique Recommandé")
-st.markdown("Valeurs calculées pour un point de fonctionnement optimal (Ondulation cible de 40% de Iout).")
+st.markdown(f"Valeurs calculées pour un point de fonctionnement optimal (Ondulation cible de {kr*100:.0f}% du courant DC).")
 
-ideal_l = bce.get_ideal_inductor(vout, vin_typ, fsw, iout, ripple_factor=0.4)
+ideal_l_nom = bce.get_ideal_inductor(vout, vin_typ, fsw, iout, ripple_factor=kr)
+ideal_l = ideal_l_nom # For backward compatibility with the rest of the file
+i_dc_max_safe = current_limit / (1.0 + (kr / 2.0))
+ideal_l_min = bce.get_ideal_inductor(vout, vin_typ, fsw, i_dc_max_safe, ripple_factor=kr)
+
 duty_cycle_typ = bce.calculate_duty_cycle(vout, vin_typ)
 
+col1a, col1b = st.columns(2)
+
+col1a.metric("L Idéale (Charge nominale)", f"{ideal_l_nom * 1e6:.2f} µH", delta="Basé sur Iout", delta_color="off")
+with col1a.expander("Détail du calcul nominal"):
+    st.caption("Inductance optimisée pour le courant de sortie prévu.")
+    st.latex(r"L = \frac{V_{out} \cdot (V_{in} - V_{out})}{V_{in} \cdot F_{sw} \cdot (I_{out} \cdot K_R)}")
+    st.latex(rf"L = \frac{{{vout} \cdot ({vin_typ} - {vout})}}{{{vin_typ} \cdot {fsw_khz}\text{{k}} \cdot ({iout} \cdot {kr})}}")
+
+col1b.metric("L Minimale (Limite Puce)", f"{ideal_l_min * 1e6:.2f} µH", delta="Basé sur Limite Saturation", delta_color="inverse")
+with col1b.expander("Détail de la Marge Ripple"):
+    st.caption("Inductance minimale pour ne pas déclencher la sécurité. On déduit d'abord le courant continu max sûr (I_DC_Max_Safe) pour laisser la place à l'ondulation.")
+    st.latex(r"I_{DC\_Max\_Safe} = \frac{I_{sat}}{1 + \frac{K_R}{2}}")
+    st.latex(rf"I_{{DC\_Max\_Safe}} = \frac{{{current_limit}}}{{1 + \frac{{{kr}}}{{2}}}} = {i_dc_max_safe:.2f}\text{{ A}}")
+    st.latex(r"L_{min} = \frac{V_{out} \cdot (V_{in} - V_{out})}{V_{in} \cdot F_{sw} \cdot (I_{DC\_Max\_Safe} \cdot K_R)}")
+
+st.markdown("---")
 col1, col2, col3, col4 = st.columns(4)
 
-col1.metric("Inductance Idéale (L)", f"{ideal_l * 1e6:.2f} µH")
-with col1.expander("Détail du calcul"):
-    st.latex(r"L = \frac{V_{out} \cdot (V_{in} - V_{out})}{V_{in} \cdot F_{sw} \cdot (I_{out} \cdot 0.4)}")
-    st.latex(rf"L = \frac{{{vout} \cdot ({vin_typ} - {vout})}}{{{vin_typ} \cdot {fsw_khz}\text{{k}} \cdot {iout*0.4:.2f}}}")
+col1.empty() # Placeholder since col1 is now used above. Actually let's just use col2, col3, col4
 
 col2.metric("Rapport Cyclique (D)", f"{duty_cycle_typ * 100:.1f} %")
 with col2.expander("Détail du calcul"):
@@ -109,6 +127,32 @@ with st.container():
         with st.expander("Détail du calcul"):
             st.latex(r"R_2 = \frac{R_1}{\frac{V_{out}}{V_{FB}} - 1}")
             st.latex(rf"R_2 = \frac{{{r1_k}\text{{k}}}}{{\frac{{{vout}}}{{{vfb}}} - 1}}")
+            
+        st.markdown("---")
+        st.subheader("Feedforward ($C_{ff}$)")
+        fc_khz = st.number_input("Fréquence coupure Fc (kHz)", min_value=1.0, value=float(fsw_khz/10), step=1.0, help="Typiquement Fsw / 10 (voir Datasheet de la puce).")
+        fc = fc_khz * 1e3
+        
+        ideal_cff = bce.calculate_ideal_cff(r1_val, fc)
+        st.markdown(f"**$C_{{ff}}$ Idéal : {ideal_cff * 1e12:.0f} pF**")
+        
+        cff_pf = st.number_input("$C_{ff}$ choisi (pF)", min_value=0.0, value=float(round(ideal_cff * 1e12)), step=1.0, help="Simulez le changement de condensateur lors d'un double sourcing.")
+        cff_val = cff_pf * 1e-12
+        
+        if cff_val > 0:
+            fz = bce.calculate_fz(r1_val, cff_val)
+            fz_khz = fz / 1e3
+            
+            if fz < fc / 2:
+                st.error(f"**$F_z$ = {fz_khz:.1f} kHz**\n\n🚨 $C_{{ff}}$ trop grand ! Zéro trop bas. Grand risque d'instabilité (injection bruit HF).")
+            elif fz > fc * 2:
+                st.warning(f"**$F_z$ = {fz_khz:.1f} kHz**\n\n⚠️ $C_{{ff}}$ trop petit. Inefficace, n'apporte pas le boost de phase attendu à $F_c$.")
+            else:
+                st.success(f"**$F_z$ = {fz_khz:.1f} kHz**\n\n✅ Parfait ! Zéro proche de $F_c$. Marge de phase optimale pour les transitoires.")
+                
+            with st.expander("Détail du calcul"):
+                st.latex(r"F_z = \frac{1}{2 \pi \cdot R_1 \cdot C_{ff}}")
+                st.latex(rf"F_z = \frac{{1}}{{2 \pi \cdot {r1_k}\text{{k}} \cdot {cff_pf}\text{{p}}}}")
 
 # --- CALCULS EN TEMPS RÉEL (WHAT-IF) ---
 delta_il = bce.calculate_inductor_ripple(vout, vin_typ, fsw, l_val)

@@ -163,3 +163,23 @@ class BuckConverterEngine:
             "i_cin": i_cin,
             "v_out": v_out_ripple
         }
+
+    @staticmethod
+    def calculate_ideal_cff(r1: float, fc: float) -> float:
+        """
+        Calcule le condensateur Feedforward (Cff) idéal pour placer le Zéro 
+        exactement sur la fréquence de coupure (Crossover Frequency) de la boucle.
+        Fz = 1 / (2 * pi * R1 * Cff)
+        """
+        if r1 <= 0 or fc <= 0:
+            return 0.0
+        return 1.0 / (2.0 * np.pi * r1 * fc)
+
+    @staticmethod
+    def calculate_fz(r1: float, cff: float) -> float:
+        """
+        Calcule la fréquence du Zéro (Fz) générée par le réseau R1 // Cff.
+        """
+        if r1 <= 0 or cff <= 0:
+            return 0.0
+        return 1.0 / (2.0 * np.pi * r1 * cff)
