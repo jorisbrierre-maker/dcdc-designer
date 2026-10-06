@@ -36,7 +36,7 @@ vin_typ = st.sidebar.slider("Vin typique (V) pour analyse", min_value=float(vin_
 
 vout = st.sidebar.number_input("Vout (V)", min_value=0.1, value=5.0, step=0.1, format="%.2f")
 iout = st.sidebar.number_input("Courant de sortie Iout (A)", min_value=0.01, value=2.0, step=0.01, format="%.2f")
-kr = st.sidebar.slider("Ratio Ondulation Courant (Kr)", min_value=0.1, max_value=1.0, value=0.4, step=0.05, format="%.2f")
+kr = st.sidebar.number_input("Ratio Ondulation Cible (Kr)", min_value=0.10, max_value=1.00, value=0.40, step=0.05, format="%.2f")
 
 st.sidebar.header("Caractéristiques Contrôleur")
 fsw_khz = st.sidebar.number_input("Fréquence découpage Fsw (kHz)", min_value=10, value=500, step=10, format="%d")
@@ -78,23 +78,21 @@ with col1b.expander("Détail de la Marge Ripple"):
     st.latex(r"L_{min} = \frac{V_{out} \cdot (V_{in} - V_{out})}{V_{in} \cdot F_{sw} \cdot (I_{DC\_Max\_Safe} \cdot K_R)}")
 
 st.markdown("---")
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
 
-col1.empty() # Placeholder since col1 is now used above. Actually let's just use col2, col3, col4
-
-col2.metric("Rapport Cyclique (D)", f"{duty_cycle_typ * 100:.1f} %")
-with col2.expander("Détail du calcul"):
+col1.metric("Rapport Cyclique (D)", f"{duty_cycle_typ * 100:.1f} %")
+with col1.expander("Détail du calcul"):
     st.latex(r"D = \frac{V_{out}}{V_{in}}")
     st.latex(rf"D = \frac{{{vout}}}{{{vin_typ}}}")
 
-col3.metric("I_Cin (RMS) max", f"{bce.calculate_cin_rms_current(iout, 0.5):.2f} A")
-with col3.expander("Détail du calcul"):
+col2.metric("I_Cin (RMS) max", f"{bce.calculate_cin_rms_current(iout, 0.5):.2f} A")
+with col2.expander("Détail du calcul"):
     st.caption("Pire cas à D = 0.5")
     st.latex(r"I_{Cin(RMS)} = I_{out} \cdot \sqrt{D \cdot (1 - D)}")
     st.latex(rf"I_{{Cin(RMS)}} = {iout} \cdot \sqrt{{0.5 \cdot 0.5}}")
 
-col4.metric("Feedback R ratio (R1/R2)", f"{(vout/vfb) - 1:.2f}")
-with col4.expander("Détail du calcul"):
+col3.metric("Feedback R ratio (R1/R2)", f"{(vout/vfb) - 1:.2f}")
+with col3.expander("Détail du calcul"):
     st.latex(r"\frac{R_1}{R_2} = \frac{V_{out}}{V_{FB}} - 1")
     st.latex(rf"\frac{{R_1}}{{R_2}} = \frac{{{vout}}}{{{vfb}}} - 1")
 
