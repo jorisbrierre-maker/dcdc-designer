@@ -144,11 +144,11 @@ with st.container():
             fz_khz = fz / 1e3
             
             if fz < fc / 2:
-                st.error(f"**$F_z$ = {fz_khz:.1f} kHz**\n\n🚨 $C_{{ff}}$ trop grand ! Zéro trop bas. Grand risque d'instabilité (injection bruit HF).")
+                st.error(f"**$F_z$ = {fz_khz:.1f} kHz**\n\n$C_{{ff}}$ trop grand ! Zéro trop bas. Grand risque d'instabilité (injection bruit HF).")
             elif fz > fc * 2:
-                st.warning(f"**$F_z$ = {fz_khz:.1f} kHz**\n\n⚠️ $C_{{ff}}$ trop petit. Inefficace, n'apporte pas le boost de phase attendu à $F_c$.")
+                st.warning(f"**$F_z$ = {fz_khz:.1f} kHz**\n\n$C_{{ff}}$ trop petit. Inefficace, n'apporte pas le boost de phase attendu à $F_c$.")
             else:
-                st.success(f"**$F_z$ = {fz_khz:.1f} kHz**\n\n✅ Parfait ! Zéro proche de $F_c$. Marge de phase optimale pour les transitoires.")
+                st.success(f"**$F_z$ = {fz_khz:.1f} kHz**\n\nParfait ! Zéro proche de $F_c$. Marge de phase optimale pour les transitoires.")
                 
             with st.expander("Détail du calcul"):
                 st.latex(r"F_z = \frac{1}{2 \pi \cdot R_1 \cdot C_{ff}}")
