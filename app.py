@@ -30,19 +30,19 @@ st.markdown("""
 st.sidebar.header("Paramètres Opérationnels")
 
 col_vin1, col_vin2 = st.sidebar.columns(2)
-vin_min = col_vin1.number_input("Vin min (V)", min_value=1.0, value=10.0, step=0.1, format="%.2f")
-vin_max = col_vin2.number_input("Vin max (V)", min_value=float(vin_min), value=20.0, step=0.1, format="%.2f")
-vin_typ = st.sidebar.slider("Vin typique (V) pour analyse", min_value=float(vin_min), max_value=float(vin_max), value=12.0, step=0.1)
+vin_min = col_vin1.number_input("$V_{in\\_min}$ (V)", min_value=1.0, value=10.0, step=0.1, format="%.2f")
+vin_max = col_vin2.number_input("$V_{in\\_max}$ (V)", min_value=float(vin_min), value=20.0, step=0.1, format="%.2f")
+vin_typ = st.sidebar.slider("$V_{in}$ typique (V) pour analyse", min_value=float(vin_min), max_value=float(vin_max), value=12.0, step=0.1)
 
-vout = st.sidebar.number_input("Vout (V)", min_value=0.1, value=5.0, step=0.1, format="%.2f")
-iout = st.sidebar.number_input("Courant de sortie Iout (A)", min_value=0.01, value=2.0, step=0.01, format="%.2f")
-kr = st.sidebar.number_input("Ratio Ondulation Cible (Kr)", min_value=0.10, max_value=1.00, value=0.40, step=0.05, format="%.2f")
+vout = st.sidebar.number_input("$V_{out}$ (V)", min_value=0.1, value=5.0, step=0.1, format="%.2f")
+iout = st.sidebar.number_input("Courant de sortie $I_{out}$ (A)", min_value=0.01, value=2.0, step=0.01, format="%.2f")
+kr = st.sidebar.number_input("Ratio Ondulation Cible ($K_R$)", min_value=0.10, max_value=1.00, value=0.40, step=0.05, format="%.2f")
 
 st.sidebar.header("Caractéristiques Contrôleur")
-fsw_khz = st.sidebar.number_input("Fréquence découpage Fsw (kHz)", min_value=10, value=500, step=10, format="%d")
+fsw_khz = st.sidebar.number_input("Fréquence découpage $F_{sw}$ (kHz)", min_value=10, value=500, step=10, format="%d")
 fsw = fsw_khz * 1e3
-vfb = st.sidebar.number_input("Tension de Référence Vfb (V)", min_value=0.01, value=0.8, step=0.01, format="%.3f")
-current_limit = st.sidebar.number_input("Limite de Courant (Saturation) (A)", min_value=0.1, value=4.0, step=0.1, format="%.2f")
+vfb = st.sidebar.number_input("Tension de Référence $V_{FB}$ (V)", min_value=0.01, value=0.8, step=0.01, format="%.3f")
+current_limit = st.sidebar.number_input("Current Limit puce $I_{lim}$ (A)", min_value=0.1, value=4.0, step=0.1, format="%.2f")
 
 
 # --- VÉRIFICATION PHYSIQUE DE BASE ---
@@ -106,19 +106,19 @@ with st.container():
     
     with col_w1:
         st.subheader("Inductance (L)")
-        l_uh = st.number_input("L choisie (µH)", min_value=0.01, value=round(ideal_l*1e6, 2), step=0.1, format="%.2f")
+        l_uh = st.number_input("$L$ choisie (µH)", min_value=0.01, value=round(ideal_l*1e6, 2), step=0.1, format="%.2f")
         l_val = l_uh * 1e-6
         
     with col_w2:
         st.subheader("Condensateurs (C)")
-        cin_uf = st.number_input("Cin choisie (µF)", min_value=0.1, value=22.0, step=1.0, format="%.1f")
+        cin_uf = st.number_input("$C_{in}$ choisie (µF)", min_value=0.1, value=22.0, step=1.0, format="%.1f")
         cin_val = cin_uf * 1e-6
-        cout_uf = st.number_input("Cout choisie (µF)", min_value=0.1, value=47.0, step=1.0, format="%.1f")
+        cout_uf = st.number_input("$C_{out}$ choisie (µF)", min_value=0.1, value=47.0, step=1.0, format="%.1f")
         cout_val = cout_uf * 1e-6
         
     with col_w3:
         st.subheader("Réseau Feedback")
-        r1_k = st.number_input("R1 (kΩ) - Haut", min_value=0.1, value=10.0, step=0.1, format="%.2f")
+        r1_k = st.number_input("$R_1$ (kΩ) - Haut", min_value=0.1, value=10.0, step=0.1, format="%.2f")
         r1_val = r1_k * 1e3
         r2_val = bce.calculate_feedback_resistor(r1_val, vout, vfb)
         st.markdown(f"**R2 calculée : {r2_val / 1e3:.2f} kΩ**")
@@ -128,7 +128,7 @@ with st.container():
             
         st.markdown("---")
         st.subheader("Feedforward ($C_{ff}$)")
-        fc_khz = st.number_input("Fréquence coupure Fc (kHz)", min_value=1.0, value=float(fsw_khz/10), step=1.0, help="Typiquement Fsw / 10 (voir Datasheet de la puce).")
+        fc_khz = st.number_input("Fréquence coupure $F_c$ (kHz)", min_value=1.0, value=float(fsw_khz/10), step=1.0, help="Typiquement Fsw / 10 (voir Datasheet de la puce).")
         fc = fc_khz * 1e3
         
         ideal_cff = bce.calculate_ideal_cff(r1_val, fc)
@@ -250,6 +250,9 @@ with tab0:
     # Courants (Axe Secondaire)
     fig_time.add_trace(plotly_go.Scatter(x=t_us, y=waveforms["i_l"], mode='lines', name='I_L (Courant Inductance)', line=dict(color='#1f77b4', width=2)), secondary_y=True)
     fig_time.add_trace(plotly_go.Scatter(x=t_us, y=waveforms["i_cin"], mode='lines', name='I_Cin (Courant pulsé entrée)', line=dict(color='#d62728', width=2)), secondary_y=True)
+    
+    # Limite iSAT DCDC
+    fig_time.add_trace(plotly_go.Scatter(x=[t_us[0], t_us[-1]], y=[current_limit, current_limit], mode='lines', name='Limite Saturation DCDC', line=dict(color='red', width=2, dash='dash')), secondary_y=True)
     
     fig_time.update_layout(title="Chronogrammes Temporels (Simulation idéale CCM)", xaxis_title="Temps (µs)", template="plotly_white", hovermode="x unified")
     fig_time.update_yaxes(title_text="Tension (V)", secondary_y=False)
