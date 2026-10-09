@@ -183,3 +183,23 @@ class BuckConverterEngine:
         if r1 <= 0 or cff <= 0:
             return 0.0
         return 1.0 / (2.0 * np.pi * r1 * cff)
+
+    @staticmethod
+    def calculate_psm_frequency(vin: float, vout: float, l: float, i_standby: float, i_peak_min: float) -> float:
+        """
+        Calcule la fréquence de découpage effective en Pulse Skip Mode (PSM) pour un courant de veille donné.
+        Fsw_eff = (2 * I_standby * Vout * (Vin - Vout)) / (L * I_peak_min^2 * Vin)
+        """
+        if vin <= vout or i_peak_min <= 0 or l <= 0 or vout <= 0:
+            return 0.0
+        return (2.0 * i_standby * vout * (vin - vout)) / (l * (i_peak_min**2) * vin)
+
+    @staticmethod
+    def calculate_psm_voltage_ripple(vin: float, vout: float, l: float, cout: float, i_peak_min: float) -> float:
+        """
+        Calcule l'ondulation de tension crête-à-crête générée lors d'un burst PSM.
+        Vout_ripple_psm = (L * I_peak_min^2 * Vin) / (2 * Cout * Vout * (Vin - Vout))
+        """
+        if vin <= vout or cout <= 0 or vout <= 0 or l <= 0:
+            return 0.0
+        return (l * (i_peak_min**2) * vin) / (2.0 * cout * vout * (vin - vout))

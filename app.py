@@ -232,7 +232,54 @@ with r_col2:
         st.latex(rf"\Delta V = \frac{{{l_uh:.2f}\mu \cdot {load_step}^2}}{{2 \cdot {cout_uf:.1f}\mu \cdot ({vin_typ} - {vout})}}")
 
 
-# --- SECTION 3 : DASHBOARDS VISUELS ---
+# --- SECTION 3 : ANALYSE BASSE CONSOMMATION (PULSE SKIP MODE) ---
+st.header("Analyse Basse Consommation (PSM / Eco-Mode)")
+st.markdown("Étude de l'ondulation et de la fréquence de découpage lorsque le DCDC passe en mode veille (courant très faible).")
+
+psm_enable = st.toggle("Activer l'analyse PSM", value=False)
+if psm_enable:
+    psm_col1, psm_col2 = st.columns(2)
+    with psm_col1:
+        i_standby_ma = st.number_input("Courant de Veille $I_{standby}$ (mA)", min_value=0.01, value=5.0, step=1.0, format="%.2f")
+        i_standby = i_standby_ma * 1e-3
+    with psm_col2:
+        i_peak_min_ma = st.number_input("Courant Crête Min $I_{peak\\_min}$ (mA)", min_value=1.0, value=200.0, step=10.0, format="%.1f", help="Voir Datasheet. Typiquement 10% à 20% de la limite de courant totale.")
+        i_peak_min = i_peak_min_ma * 1e-3
+
+    if i_standby >= i_peak_min / 2:
+        st.warning(f"Le courant de veille demandé ({i_standby_ma} mA) est trop grand pour du PSM pur avec ce $I_{{peak\\_min}}$ ({i_peak_min_ma} mA). La puce repassera probablement en mode continu (CCM).")
+    else:
+        fsw_eff = bce.calculate_psm_frequency(vin_typ, vout, l_val, i_standby, i_peak_min)
+        v_ripple_psm = bce.calculate_psm_voltage_ripple(vin_typ, vout, l_val, cout_val, i_peak_min)
+        
+        st.markdown("### Résultats en Mode Veille (PSM)")
+        psm_r_col1, psm_r_col2 = st.columns(2)
+        
+        with psm_r_col1:
+            st.markdown("**Fréquence effective ($F_{sw\\_eff}$)**")
+            fsw_eff_khz = fsw_eff / 1e3
+            if fsw_eff < 20000:
+                st.error(f"**{fsw_eff_khz:.2f} kHz** (Bande Audible ! Risque de sifflement de la bobine)")
+            else:
+                st.success(f"**{fsw_eff_khz:.2f} kHz**")
+            with st.expander("Détail du calcul"):
+                st.latex(r"F_{sw\_eff} = \frac{2 \cdot I_{standby} \cdot V_{out} \cdot (V_{in} - V_{out})}{L \cdot I_{peak\_min}^2 \cdot V_{in}}")
+                st.latex(rf"F_{{sw\_eff}} = {fsw_eff_khz:.2f}\text{{ kHz}}")
+
+        with psm_r_col2:
+            st.markdown("**Ondulation Vout en Veille**")
+            vout_ripple_psm_pct = (v_ripple_psm / vout) * 100
+            if vout_ripple_psm_pct > 2.0:
+                st.error(f"**{v_ripple_psm*1000:.1f} mV** ({vout_ripple_psm_pct:.2f}%)")
+            elif vout_ripple_psm_pct > 1.0:
+                st.warning(f"**{v_ripple_psm*1000:.1f} mV** ({vout_ripple_psm_pct:.2f}%)")
+            else:
+                st.success(f"**{v_ripple_psm*1000:.1f} mV** ({vout_ripple_psm_pct:.2f}%)")
+            with st.expander("Détail du calcul"):
+                st.latex(r"\Delta V_{out\_psm} = \frac{L \cdot I_{peak\_min}^2 \cdot V_{in}}{2 \cdot C_{out} \cdot V_{out} \cdot (V_{in} - V_{out})}")
+                st.latex(rf"\Delta V_{{out\_psm}} = {v_ripple_psm*1000:.1f}\text{{ mV}}")
+
+# --- SECTION 4 : DASHBOARDS VISUELS ---
 st.header("Dashboards Visuels")
 
 tab0, tab1, tab2, tab3, tab4 = st.tabs(["Chronogrammes Temporels", "Ondulation Courant vs Inductance", "Courants vs Vin", "Ripple Sortie vs Fréquence", "Réactivité (Voltage Sag)"])
